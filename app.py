@@ -211,8 +211,8 @@ with tab3:
                 st.write(f"Veri boyutu: {len(data)}")
                 
                 if not data.empty and len(data) > 1:
-                    ilk = float(data['Close'].iloc[0])
-                    son = float(data['Close'].iloc[-1])
+                    ilk = float(data['Close'].values[0])
+                    son = float(data['Close'].values[-1])
                     getiri = (son / ilk - 1) * 100
                     sonuclar[isim] = getiri
                     st.write(f"✅ {isim}: %{getiri:.1f}")
