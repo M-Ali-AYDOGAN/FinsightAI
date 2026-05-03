@@ -6,13 +6,13 @@ import plotly.graph_objects as go
 import requests
 
 # ========== SIFRE KORUMASI ==========
-st.set_page_config(page_title="Finans AI", page_icon="🔒", layout="wide")
+st.set_page_config(page_title="FinsightAI", page_icon="🔒", layout="wide")
 
 if "sifre_dogrulandi" not in st.session_state:
     st.session_state.sifre_dogrulandi = False
 
 if not st.session_state.sifre_dogrulandi:
-    st.title("🔒 Finans AI")
+    st.title("🔒 FinsightAI")
     st.write("Lutfen sifrenizi girin:")
     
     sifre = st.text_input("Sifre", type="password")
