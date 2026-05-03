@@ -18,7 +18,7 @@ if not st.session_state.sifre_dogrulandi:
     sifre = st.text_input("Sifre", type="password")
     
     if st.button("Giris"):
-        if sifre == "Finan@12345":
+        if sifre == "Finans@12345":
             st.session_state.sifre_dogrulandi = True
             st.rerun()
         else:
