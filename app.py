@@ -36,7 +36,7 @@ try:
     NEWS_API_KEY = st.secrets["NEWS_API_KEY"]
 except:
     FRED_API_KEY = "9d3135bcfce4a8a3af3ccc3488a94a12"
-    NEWS_API_KEY = "361bdcc09ce647f2b47d22addbec35c"
+    NEWS_API_KEY = "361bdcc09ce647f2b47d22addbbec35c"
 
 tab1, tab2, tab3 = st.tabs(["🌍 Makro", "📰 Haberler", "🏭 Sektorler"])
 
