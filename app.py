@@ -163,6 +163,7 @@ with tab2:
             return []
     
     haberler = get_news()
+    st.write(f"Haber sayisi: {len(haberler)}")
     for haber in haberler:
         with st.container():
             col_img, col_text = st.columns([1, 4])
@@ -208,6 +209,7 @@ with tab3:
         return sonuclar
     
     momentum = get_sector_momentum()
+    st.write(f"Sektor sayisi: {len(momentum)}")
     
     if momentum:
         sirali = dict(sorted(momentum.items(), key=lambda x: x[1], reverse=True))
