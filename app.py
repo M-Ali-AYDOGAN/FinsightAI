@@ -255,7 +255,7 @@ with tab3:
 st.divider()
     # Katman 3 Arayüzü
 st.subheader("🔍 Katman 3: Şirket Taraması ve Temel Analiz")
-  with st.expander("🎯 Filtreleme Parametrelerini Gör", expanded=False):
+with st.expander("🎯 Filtreleme Parametrelerini Gör", expanded=False):
         st.write("""
         - **Birincil Filtre:** Gelir CAGR (3Y) > %15
         - **Marj Genişlemesi:** > 200 baz puan
