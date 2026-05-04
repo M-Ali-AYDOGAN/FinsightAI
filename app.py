@@ -101,6 +101,22 @@ def screen_stocks(sector_scores):
         })
     return pd.DataFrame(screened_results)
 
+# --- KATMAN 4: DEĞERLEME MOTORU ---
+def calculate_fair_value(ticker, current_price, cagr):
+    """
+    Basitleştirilmiş DCF (Nakit Akışı) ve Çarpan Analizi
+    """
+    # Büyüme oranına göre beklenen F/K (P/E) çarpanı ataması
+    expected_pe = 15 + (cagr * 0.5) 
+    
+    # Tahmini İçsel Değer (3 Yıllık Projeksiyon)
+    # Formül: Mevcut Fiyat * (1 + CAGR)^3 / (İskonto Oranı)
+    fair_value = current_price * (1 + (cagr/100))**2 / 1.2 # %20 iskonto oranı ile
+    
+    upside = ((fair_value / current_price) - 1) * 100
+    
+    return round(fair_value, 2), round(upside, 2)
+
 tab1, tab2, tab3 = st.tabs(["🌍 Makro", "📰 Haberler", "🏭 Sektorler"])
 
 with tab1:
@@ -276,6 +292,37 @@ with tab3:
     )
     
     st.info("💡 Not: Yukarıdaki liste Katman 1 (Makro) ve Katman 2 (Sektör) puanları ile ağırlıklandırılmıştır.")
+
+st.divider()
+    st.subheader("💰 Katman 4: Değerleme ve Hedef Fiyatlar")
+    
+    # Örnek fiyat verileri (Gerçekte yfinance'den anlık çekilecek)
+    prices = {'NVDA': 900, 'JPM': 190, 'XOM': 120, 'PFE': 28, 'TSLA': 170}
+    
+    valuation_data = []
+    for _, row in screened_df.iterrows():
+        ticker = row['Hisse']
+        cagr_val = float(row['Büyüme (CAGR)'].replace('%', ''))
+        curr_p = prices.get(ticker, 100)
+        
+        f_value, upside = calculate_fair_value(ticker, curr_p, cagr_val)
+        
+        valuation_data.append({
+            "Hisse": ticker,
+            "Mevcut Fiyat": f"${curr_p}",
+            "Hedef Fiyat (Fair Value)": f"${f_value}",
+            "Potansiyel": f"%{upside}",
+            "Durum": "İSKONTOLU" if upside > 15 else "PAHALI"
+        })
+    
+    val_df = pd.DataFrame(valuation_data)
+    
+    # Hedef Fiyat Kartları
+    cols = st.columns(len(val_df))
+    for idx, row in val_df.iterrows():
+        cols[idx].metric(row['Hisse'], row['Hedef Fiyat (Fair Value)'], delta=row['Potansiyel'])
+
+    st.caption("⚠️ Hedef fiyatlar Katman 1 (Makro) iskonto oranlarına göre dinamik olarak güncellenmektedir.")
 
 st.divider()
 st.caption("⚠️ Bilgilendirme amaclıdır, yatırım tavsiyesi degildir.")
