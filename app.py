@@ -263,7 +263,24 @@ def calculate_sector_scores(macro_data):
                 scores[isim] = {"Skor": round(puan, 2), "Momentum": round(momentum, 2)}
             except: continue
         return scores
+ # Verileri Katman 1'den alıp işle
+    s_scores = calculate_sector_scores(m_data) # m_data Katman 1'den geliyor
+    
+    if s_scores:
+        # Görselleştirme: Isı Haritası Tadında Bar Grafik
+        sirali_sektor = sorted(s_scores.items(), key=lambda x: x[1]['Skor'], reverse=True)
+        isimler = [x[0] for x in sirali_sektor]
+        skorlar = [x[1]['Skor'] for x in sirali_sektor]
+        
+        fig_sec = go.Figure(go.Bar(
+            x=skorlar, y=isimler, orientation='h',
+            marker=dict(color=skorlar, colorscale='RdYlGn')
+        ))
+        fig_sec.update_layout(title="Yapay Zeka Destekli Sektör Skorları (3-6 Aylık Ufuk)", 
+                             height=400, template="plotly_dark", xaxis_title="Kompozit Skor")
+        st.plotly_chart(fig_sec, use_container_width=True)
 
+    
 # --- TÜM VERİLERİ ÖNCEDEN HAZIRLA ---
 m_data = calculate_macro_scores(FRED_API_KEY)
 s_scores = calculate_sector_scores(m_data)
@@ -382,24 +399,6 @@ with tab3:
 
     @st.cache_data(ttl=21600)
     
-
-    # Verileri Katman 1'den alıp işle
-    s_scores = calculate_sector_scores(m_data) # m_data Katman 1'den geliyor
-    
-    if s_scores:
-        # Görselleştirme: Isı Haritası Tadında Bar Grafik
-        sirali_sektor = sorted(s_scores.items(), key=lambda x: x[1]['Skor'], reverse=True)
-        isimler = [x[0] for x in sirali_sektor]
-        skorlar = [x[1]['Skor'] for x in sirali_sektor]
-        
-        fig_sec = go.Figure(go.Bar(
-            x=skorlar, y=isimler, orientation='h',
-            marker=dict(color=skorlar, colorscale='RdYlGn')
-        ))
-        fig_sec.update_layout(title="Yapay Zeka Destekli Sektör Skorları (3-6 Aylık Ufuk)", 
-                             height=400, template="plotly_dark", xaxis_title="Kompozit Skor")
-        st.plotly_chart(fig_sec, use_container_width=True)
-
         # Sektör Detay Tablosu
         st.subheader("📋 Sektörel Duyarlılık ve Tahmin Matrisi")
         detay_df = pd.DataFrame([
