@@ -254,8 +254,9 @@ with tab3:
         st.dataframe(detay_df, use_container_width=True, hide_index=True)
 
 st.divider()
-    # Katman 3 Arayüzü
-    st.subheader("🔍 Katman 3: Şirket Taraması ve Temel Analiz")
+   
+# Katman 3 Arayüzü
+st.subheader("🔍 Katman 3: Şirket Taraması ve Temel Analiz")
     
     with st.expander("🎯 Filtreleme Parametrelerini Gör", expanded=False):
         st.write("""
