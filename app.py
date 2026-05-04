@@ -293,7 +293,7 @@ with tab3:
     
     st.info("💡 Not: Yukarıdaki liste Katman 1 (Makro) ve Katman 2 (Sektör) puanları ile ağırlıklandırılmıştır.")
 
-st.divider()
+    st.divider()
     st.subheader("💰 Katman 4: Değerleme ve Hedef Fiyatlar")
     
     # Örnek fiyat verileri (Gerçekte yfinance'den anlık çekilecek)
