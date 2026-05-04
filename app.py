@@ -252,13 +252,10 @@ with tab3:
         ]).sort_values(by="AI Skoru", ascending=False)
         
         st.dataframe(detay_df, use_container_width=True, hide_index=True)
-
 st.divider()
-   
-# Katman 3 Arayüzü
+    # Katman 3 Arayüzü
 st.subheader("🔍 Katman 3: Şirket Taraması ve Temel Analiz")
-    
-    with st.expander("🎯 Filtreleme Parametrelerini Gör", expanded=False):
+  with st.expander("🎯 Filtreleme Parametrelerini Gör", expanded=False):
         st.write("""
         - **Birincil Filtre:** Gelir CAGR (3Y) > %15
         - **Marj Genişlemesi:** > 200 baz puan
@@ -276,7 +273,7 @@ st.subheader("🔍 Katman 3: Şirket Taraması ve Temel Analiz")
         hide_index=True
     )
     
-    st.info("💡 Not: Yukarıdaki liste Katman 1 (Makro) ve Katman 2 (Sektör) puanları ile ağırlıklandırılmıştır.")        
+    st.info("💡 Not: Yukarıdaki liste Katman 1 (Makro) ve Katman 2 (Sektör) puanları ile ağırlıklandırılmıştır.")
 
 st.divider()
 st.caption("⚠️ Bilgilendirme amaclıdır, yatırım tavsiyesi degildir.")
