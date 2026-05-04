@@ -34,6 +34,18 @@ except:
     FRED_API_KEY = "9d3135bcfce4a8a3af3ccc3488a94a12"
     NEWS_API_KEY = "361bdcc09ce647f2b47d22addbbec35c"
 
+
+def get_news():
+        try:
+            # Haberleri bugüne kısıtlamak yerine "en güncel" olacak şekilde çekiyoruz
+            url = f"https://newsapi.org/v2/everything?q=finance+OR+economy&language=en&sortBy=publishedAt&pageSize=10&apiKey={NEWS_API_KEY}"
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                return response.json().get('articles', [])
+            return []
+        except: return []
+
+
 # --- KATMAN 1 HESAPLAMA MOTORLARI ---
 def get_fred_val(series_id, api_key):
     try:
@@ -237,6 +249,33 @@ def get_investment_intelligence(m_data, s_scores, geo_df, c_df):
 
     return pd.DataFrame(intelligence_reports)
 
+def calculate_sector_scores(macro_data):
+        scores = {}
+        for isim, meta in sector_meta.items():
+            try:
+                # Fiyat Momentumu (6 Aylık)
+                df = yf.download(meta['etf'], period="6mo", progress=False, auto_adjust=True)
+                close_series = df['Close'].iloc[:, 0] if isinstance(df['Close'], pd.DataFrame) else df['Close']
+                momentum = ((close_series.iloc[-1] / close_series.iloc[0]) - 1) * 100
+                
+                # --- STRATEJİK PUANLAMA (Katman 2 Mantığı) ---
+                puan = 50 # Baz puan
+                puan += (momentum * 0.5) # Momentum ağırlığı %50
+                
+                # Faiz Duyarlılığı Ayarlaması
+                if macro_data['fed_funds'] > 3.5: # Faizler yüksekse
+                    if meta['faiz'] == 3: puan -= 15 # Faiz hassasiyeti yüksek olanı cezalandır
+                    if isim == 'Finansallar': puan += 10 # Bankalar için pozitif
+                
+                # Resesyon Risk Ayarlaması (ROM)
+                if macro_data['rom'] > 50:
+                    if isim in ['Teknoloji', 'Enerji']: puan -= 20 # Döngüsel sektörler
+                    if isim == 'Sağlık': puan += 15 # Savunmacı sektörler
+                
+                scores[isim] = {"Skor": round(puan, 2), "Momentum": round(momentum, 2)}
+            except: continue
+        return scores
+
 # --- TÜM VERİLERİ ÖNCEDEN HAZIRLA ---
 m_data = calculate_macro_scores(FRED_API_KEY)
 s_scores = calculate_sector_scores(m_data)
@@ -315,15 +354,6 @@ with tab1:
 with tab2:
     st.header("📰 Ekonomi Haberleri")
     @st.cache_data(ttl=1800)
-    def get_news():
-        try:
-            # Haberleri bugüne kısıtlamak yerine "en güncel" olacak şekilde çekiyoruz
-            url = f"https://newsapi.org/v2/everything?q=finance+OR+economy&language=en&sortBy=publishedAt&pageSize=10&apiKey={NEWS_API_KEY}"
-            response = requests.get(url, timeout=10)
-            if response.status_code == 200:
-                return response.json().get('articles', [])
-            return []
-        except: return []
     
     haberler = get_news()
     if haberler:
@@ -353,32 +383,7 @@ with tab3:
     }
 
     @st.cache_data(ttl=21600)
-    def calculate_sector_scores(macro_data):
-        scores = {}
-        for isim, meta in sector_meta.items():
-            try:
-                # Fiyat Momentumu (6 Aylık)
-                df = yf.download(meta['etf'], period="6mo", progress=False, auto_adjust=True)
-                close_series = df['Close'].iloc[:, 0] if isinstance(df['Close'], pd.DataFrame) else df['Close']
-                momentum = ((close_series.iloc[-1] / close_series.iloc[0]) - 1) * 100
-                
-                # --- STRATEJİK PUANLAMA (Katman 2 Mantığı) ---
-                puan = 50 # Baz puan
-                puan += (momentum * 0.5) # Momentum ağırlığı %50
-                
-                # Faiz Duyarlılığı Ayarlaması
-                if macro_data['fed_funds'] > 3.5: # Faizler yüksekse
-                    if meta['faiz'] == 3: puan -= 15 # Faiz hassasiyeti yüksek olanı cezalandır
-                    if isim == 'Finansallar': puan += 10 # Bankalar için pozitif
-                
-                # Resesyon Risk Ayarlaması (ROM)
-                if macro_data['rom'] > 50:
-                    if isim in ['Teknoloji', 'Enerji']: puan -= 20 # Döngüsel sektörler
-                    if isim == 'Sağlık': puan += 15 # Savunmacı sektörler
-                
-                scores[isim] = {"Skor": round(puan, 2), "Momentum": round(momentum, 2)}
-            except: continue
-        return scores
+    
 
     # Verileri Katman 1'den alıp işle
     s_scores = calculate_sector_scores(m_data) # m_data Katman 1'den geliyor
