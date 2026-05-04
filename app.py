@@ -141,6 +141,36 @@ def calculate_position_size(upside, rom_score):
     final_allocation = max(0, min(base_size * risk_multiplier * 100, 25)) # Tek hisse max %25
     return round(final_allocation, 2)    
 
+# --- KÜRESEL PİYASALAR VE FIRSAT HARİTASI ---
+def get_global_opportunity_map():
+    # Küresel takip listesi (Endeksler)
+    global_assets = {
+        'Türkiye': 'XU100.IS',
+        'Almanya': '^GDAXI', 'Fransa': '^FCHI', 'İngiltere': '^FTSE',
+        'İtalya': 'FTSEMIB.MI', 'İspanya': '^IBEX', 'Hollanda': '^AEX',
+        'İsviçre': '^SSMI', 'Polonya': 'WIG20.WA',
+        'Japonya': '^N225', 'Çin': '000001.SS', 'Hindistan': '^NSEI',
+        'G. Kore': '^KS11', 'Vietnam': 'VNI.VN'
+    }
+    
+    results = []
+    for country, ticker in global_assets.items():
+        try:
+            # 1 yıllık veri çekerek momentum analizi yapıyoruz
+            hist = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
+            if not hist.empty:
+                # Kapanış fiyatı sütununu güvenli çekme
+                close_series = hist['Close'].iloc[:, 0] if isinstance(hist['Close'], pd.DataFrame) else hist['Close']
+                ytd_change = ((close_series.iloc[-1] / close_series.iloc[0]) - 1) * 100
+                
+                results.append({
+                    "Ülke": country,
+                    "Yıllık Getiri": round(ytd_change, 2),
+                    "Momentum": "🔥 Güçlü" if ytd_change > 15 else ("🧊 Zayıf" if ytd_change < 0 else "⚖️ Stabil")
+                })
+        except: continue
+    return pd.DataFrame(results)
+
 tab1, tab2, tab3 = st.tabs(["🌍 Makro", "📰 Haberler", "🏭 Sektorler"])
 
 with tab1:
@@ -383,5 +413,25 @@ with tab3:
 
     st.warning(f"💡 Stratejik Not: Mevcut makro riskler nedeniyle portföyün %{round(cash_weight, 2)} kadarı nakitte tutulmalıdır.")
 
+    st.divider()
+    st.header("🌐 Küresel Piyasalar ve Coğrafi Fırsatlar")
+    st.write("Yatırım uzmanı gözüyle sermayenin hangi ülkelere aktığını takip edin.")
+
+    # Veriyi çek ve görselleştir
+    geo_df = get_global_opportunity_map()
+    
+    if not geo_df.empty:
+        col_geo1, col_geo2 = st.columns([2, 1])
+        
+        with col_geo1:
+            # Ülkelerin getiri performans grafiği
+            st.bar_chart(geo_df.set_index("Ülke")["Yıllık Getiri"])
+            
+        with col_geo2:
+            st.subheader("🏆 Lider Piyasalar")
+            top_performers = geo_df.sort_values(by="Yıllık Getiri", ascending=False).head(5)
+            st.dataframe(top_performers, hide_index=True, use_container_width=True)
+
+    st.info("💡 Uzman Notu: Türkiye gibi yüksek enflasyonlu piyasalarda 'Yıllık Getiri'nin reel getiri olup olmadığını Katman 1'deki enflasyon verileriyle kıyaslayın.")
 st.divider()
 st.caption("⚠️ Bilgilendirme amaclıdır, yatırım tavsiyesi degildir.")
