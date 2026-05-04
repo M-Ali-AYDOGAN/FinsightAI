@@ -252,10 +252,12 @@ with tab3:
         ]).sort_values(by="AI Skoru", ascending=False)
         
         st.dataframe(detay_df, use_container_width=True, hide_index=True)
-st.divider()
+  
+    st.divider()
     # Katman 3 Arayüzü
-st.subheader("🔍 Katman 3: Şirket Taraması ve Temel Analiz")
-with st.expander("🎯 Filtreleme Parametrelerini Gör", expanded=False):
+    st.subheader("🔍 Katman 3: Şirket Taraması ve Temel Analiz")
+    
+    with st.expander("🎯 Filtreleme Parametrelerini Gör", expanded=False):
         st.write("""
         - **Birincil Filtre:** Gelir CAGR (3Y) > %15
         - **Marj Genişlemesi:** > 200 baz puan
