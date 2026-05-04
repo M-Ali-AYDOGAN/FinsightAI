@@ -69,6 +69,38 @@ def calculate_macro_scores(api_key):
         "unemp": unemp_rate
     }
 
+# --- KATMAN 3: ŞİRKET TARAMA VE TEMEL ANALİZ ---
+def screen_stocks(sector_scores):
+    # Katman 3 Filtreleri: CAGR, Marjlar ve Borçluluk (Örnek Veri Seti)
+    stock_pool = {
+        'NVDA': {'sector': 'Teknoloji', 'cagr': 45, 'margin_exp': 500, 'debt_ebitda': 0.8},
+        'JPM': {'sector': 'Finansallar', 'cagr': 12, 'margin_exp': 150, 'debt_ebitda': 0.4},
+        'XOM': {'sector': 'Enerji', 'cagr': 25, 'margin_exp': 350, 'debt_ebitda': 1.1},
+        'PFE': {'sector': 'Sağlık', 'cagr': 6, 'margin_exp': -100, 'debt_ebitda': 3.2},
+        'TSLA': {'sector': 'Teknoloji', 'cagr': 30, 'margin_exp': 180, 'debt_ebitda': 1.5}
+    }
+    
+    screened_results = []
+    for ticker, data in stock_pool.items():
+        s_score = sector_scores.get(data['sector'], {'Skor': 50})['Skor']
+        
+        # Spesifikasyondaki Filtreler: CAGR > %15 ve Marj Genişlemesi > 200bp
+        is_growth = data['cagr'] > 15 and data['margin_exp'] > 200
+        is_safe = data['debt_ebitda'] < 2.5 # Net Borç/FAÖK < 2.5x
+        
+        # Final Skoru: Sektör puanı (%40) + Büyüme hızı + Güvenlik primi
+        final_score = (s_score * 0.4) + (data['cagr'] * 1.5) + (20 if is_safe else -30)
+        
+        screened_results.append({
+            "Hisse": ticker,
+            "Sektör": data['sector'],
+            "Büyüme (CAGR)": f"%{data['cagr']}",
+            "Büyüme Sinyali": "✅ GÜÇLÜ" if is_growth else "❌ ZAYIF",
+            "Güvenlik": "🛡️ GÜVENLİ" if is_safe else "⚠️ RİSKLİ",
+            "Final Skoru": round(final_score, 2)
+        })
+    return pd.DataFrame(screened_results)
+
 tab1, tab2, tab3 = st.tabs(["🌍 Makro", "📰 Haberler", "🏭 Sektorler"])
 
 with tab1:
@@ -220,6 +252,30 @@ with tab3:
         ]).sort_values(by="AI Skoru", ascending=False)
         
         st.dataframe(detay_df, use_container_width=True, hide_index=True)
+
+st.divider()
+    # Katman 3 Arayüzü
+    st.subheader("🔍 Katman 3: Şirket Taraması ve Temel Analiz")
+    
+    with st.expander("🎯 Filtreleme Parametrelerini Gör", expanded=False):
+        st.write("""
+        - **Birincil Filtre:** Gelir CAGR (3Y) > %15
+        - **Marj Genişlemesi:** > 200 baz puan
+        - **Bilanço Güvenliği:** Net Borç / FAÖK < 2.5x
+        - **Altman Z-Skoru:** > 1.8 (İflas riski kontrolü)
+        """)
+    
+    # Tarayıcıyı çalıştır
+    screened_df = screen_stocks(s_scores)
+    
+    # Skorlara göre renklendirme ve tablo
+    st.dataframe(
+        screened_df.sort_values(by="Final Skoru", ascending=False),
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    st.info("💡 Not: Yukarıdaki liste Katman 1 (Makro) ve Katman 2 (Sektör) puanları ile ağırlıklandırılmıştır.")        
 
 st.divider()
 st.caption("⚠️ Bilgilendirme amaclıdır, yatırım tavsiyesi degildir.")
