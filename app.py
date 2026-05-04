@@ -153,39 +153,73 @@ with tab2:
     else: st.warning("Guncel haber bulunamadi.")
 
 with tab3:
-    st.header("🏭 Sektor Rotasyonu (6 Aylik)")
-    @st.cache_data(ttl=21600)
-    def get_sector_momentum():
-        etfler = {
-            'Teknoloji': 'XLK', 'Finansal': 'XLF', 'Enerji': 'XLE',
-            'Saglik': 'XLV', 'Tuketim': 'XLY', 'Kamu': 'XLU',
-            'Hammadde': 'XLB', 'Sanayi': 'XLI', 'Gayrimenkul': 'XLRE', 'Iletisim': 'XLC'
-        }
-        sonuclar = {}
-        for isim, sembol in etfler.items():
-            try:
-                df = yf.download(sembol, period="6mo", progress=False, auto_adjust=True)
-                if not df.empty:
-                    # MultiIndex yapısını düzleştirme (0-dim hatasını çözer)
-                    close_data = df['Close']
-                    if isinstance(close_data, pd.DataFrame):
-                        close_series = close_data.iloc[:, 0]
-                    else:
-                        close_series = close_data
-                    
-                    ilk, son = float(close_series.iloc[0]), float(close_series.iloc[-1])
-                    sonuclar[isim] = ((son / ilk) - 1) * 100
-            except: continue
-        return sonuclar
+    st.header("🏭 Katman 2: Sektör Rotasyonu ve Tahminleme")
+    
+    # Sektör Duyarlılık Veritabanı (Senin Spesifikasyonun)
+    # 1: Düşük, 2: Orta, 3: Yüksek Duyarlılık
+    sector_meta = {
+        'Teknoloji': {'faiz': 3, 'enflasyon': 1, 'etf': 'XLK'},
+        'Finansallar': {'faiz': 3, 'enflasyon': 2, 'etf': 'XLF'},
+        'Enerji': {'faiz': 1, 'enflasyon': 3, 'etf': 'XLE'},
+        'Sağlık': {'faiz': 2, 'enflasyon': 1, 'etf': 'XLV'},
+        'Kamu Hizmetleri': {'faiz': 3, 'enflasyon': 2, 'etf': 'XLU'},
+        'Gayrimenkul': {'faiz': 3, 'enflasyon': 2, 'etf': 'XLRE'}
+    }
 
-    momentum = get_sector_momentum()
-    if momentum:
-        sirali = dict(sorted(momentum.items(), key=lambda x: x[1], reverse=True))
-        fig = go.Figure([go.Bar(x=list(sirali.keys()), y=list(sirali.values()),
-                                marker_color=['green' if v > 0 else 'red' for v in sirali.values()])])
-        fig.update_layout(height=500, template="plotly_dark", yaxis_title="Getiri (%)")
-        st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(pd.DataFrame(sirali.items(), columns=['Sektor', 'Getiri (%)']), use_container_width=True)
+    @st.cache_data(ttl=21600)
+    def calculate_sector_scores(macro_data):
+        scores = {}
+        for isim, meta in sector_meta.items():
+            try:
+                # Fiyat Momentumu (6 Aylık)
+                df = yf.download(meta['etf'], period="6mo", progress=False, auto_adjust=True)
+                close_series = df['Close'].iloc[:, 0] if isinstance(df['Close'], pd.DataFrame) else df['Close']
+                momentum = ((close_series.iloc[-1] / close_series.iloc[0]) - 1) * 100
+                
+                # --- STRATEJİK PUANLAMA (Katman 2 Mantığı) ---
+                puan = 50 # Baz puan
+                puan += (momentum * 0.5) # Momentum ağırlığı %50
+                
+                # Faiz Duyarlılığı Ayarlaması
+                if macro_data['fed_funds'] > 3.5: # Faizler yüksekse
+                    if meta['faiz'] == 3: puan -= 15 # Faiz hassasiyeti yüksek olanı cezalandır
+                    if isim == 'Finansallar': puan += 10 # Bankalar için pozitif
+                
+                # Resesyon Risk Ayarlaması (ROM)
+                if macro_data['rom'] > 50:
+                    if isim in ['Teknoloji', 'Enerji']: puan -= 20 # Döngüsel sektörler
+                    if isim == 'Sağlık': puan += 15 # Savunmacı sektörler
+                
+                scores[isim] = {"Skor": round(puan, 2), "Momentum": round(momentum, 2)}
+            except: continue
+        return scores
+
+    # Verileri Katman 1'den alıp işle
+    s_scores = calculate_sector_scores(m_data) # m_data Katman 1'den geliyor
+    
+    if s_scores:
+        # Görselleştirme: Isı Haritası Tadında Bar Grafik
+        sirali_sektor = sorted(s_scores.items(), key=lambda x: x[1]['Skor'], reverse=True)
+        isimler = [x[0] for x in sirali_sektor]
+        skorlar = [x[1]['Skor'] for x in sirali_sektor]
+        
+        fig_sec = go.Figure(go.Bar(
+            x=skorlar, y=isimler, orientation='h',
+            marker=dict(color=skorlar, colorscale='RdYlGn')
+        ))
+        fig_sec.update_layout(title="Yapay Zeka Destekli Sektör Skorları (3-6 Aylık Ufuk)", 
+                             height=400, template="plotly_dark", xaxis_title="Kompozit Skor")
+        st.plotly_chart(fig_sec, use_container_width=True)
+
+        # Sektör Detay Tablosu
+        st.subheader("📋 Sektörel Duyarlılık ve Tahmin Matrisi")
+        detay_df = pd.DataFrame([
+            {"Sektör": k, "AI Skoru": v['Skor'], "6A Momentum": f"%{v['Momentum']}", 
+             "Durum": "GÜÇLÜ AL" if v['Skor'] > 65 else ("ZAYIF" if v['Skor'] < 45 else "NÖTR")}
+            for k, v in s_scores.items()
+        ]).sort_values(by="AI Skoru", ascending=False)
+        
+        st.dataframe(detay_df, use_container_width=True, hide_index=True)
 
 st.divider()
 st.caption("⚠️ Bilgilendirme amaclıdır, yatırım tavsiyesi degildir.")
