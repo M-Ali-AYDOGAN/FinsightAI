@@ -34,66 +34,97 @@ except:
     FRED_API_KEY = "9d3135bcfce4a8a3af3ccc3488a94a12"
     NEWS_API_KEY = "361bdcc09ce647f2b47d22addbbec35c"
 
+# --- KATMAN 1 HESAPLAMA MOTORLARI ---
+def get_fred_val(series_id, api_key):
+    try:
+        url = f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={api_key}&file_type=json&sort_order=desc&limit=2"
+        data = requests.get(url).json()
+        if 'observations' in data and len(data['observations']) >= 2:
+            val = float(data['observations'][0]['value'])
+            prev = float(data['observations'][1]['value'])
+            return val, prev
+    except: return None, None
+
+def calculate_macro_scores(api_key):
+    # Veri Toplama
+    fed_funds, _ = get_fred_val('FEDFUNDS', api_key)
+    dgs10, _ = get_fred_val('DGS10', api_key)
+    dgs2, _ = get_fred_val('DGS2', api_key)
+    vix, _ = get_fred_val('VIXCLS', api_key)
+    unemp_rate, prev_unemp = get_fred_val('UNRATE', api_key)
+    
+    slope = (dgs10 - dgs2) if (dgs10 and dgs2) else 0
+    
+    # ROM (Resesyon Olasılığı Modeli) Mantığı
+    rom_score = 0
+    if slope < 0: rom_score += 50 # Getiri eğrisi tersse
+    if unemp_rate and prev_unemp and (unemp_rate > prev_unemp): rom_score += 30 # İşsizlik artışı
+    if vix and vix > 30: rom_score += 20 # Yüksek volatilite
+    
+    return {
+        "slope": slope,
+        "rom": min(rom_score, 100),
+        "fed_funds": fed_funds,
+        "vix": vix,
+        "unemp": unemp_rate
+    }
+
 tab1, tab2, tab3 = st.tabs(["🌍 Makro", "📰 Haberler", "🏭 Sektorler"])
 
 with tab1:
-    st.header("🌍 Kuresel Makro Gostergeler")
+    st.header("🌍 Katman 1: Küresel Makro Komuta Merkezi")
     
-    @st.cache_data(ttl=21600)
-    def get_fred_data(series_id):
-        try:
-            url = f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={FRED_API_KEY}&file_type=json&sort_order=desc&limit=10"
-            response = requests.get(url)
-            data = response.json()
-            if 'observations' in data and len(data['observations']) > 0:
-                son = float(data['observations'][0]['value'])
-                onceki = float(data['observations'][1]['value'])
-                return son, onceki
-            return None, None
-        except:
-            return None, None
+    # Verileri hesapla
+    m_data = calculate_macro_scores(FRED_API_KEY)
     
-    seriler = {
-        'Fed Fonlari': 'FEDFUNDS', '10Y Hazine': 'DGS10', '2Y Hazine': 'DGS2',
-        'VIX': 'VIXCLS', 'Brent Petrol': 'DCOILBRENTEU', 'Altin': 'GOLDAMGBD228NLBM'
-    }
+    # Gösterge Paneli
+    col_score1, col_score2 = st.columns(2)
     
-    col1, col2, col3 = st.columns(3)
-    i = 0
-    for isim, kod in seriler.items():
-        son, onceki = get_fred_data(kod)
-        if son is not None and onceki is not None:
-            degisim = son - onceki
-            target_col = [col1, col2, col3][i % 3]
-            with target_col:
-                st.metric(isim, f"{son:.2f}", f"{degisim:.3f}")
-            i += 1
+    with col_score1:
+        # Resesyon Olasılığı Kadranı (Gauge)
+        fig_rom = go.Figure(go.Indicator(
+            mode = "gauge+number",
+            value = m_data['rom'],
+            title = {'text': "ROM: Resesyon Olasılığı (%)", 'font': {'size': 20}},
+            gauge = {
+                'axis': {'range': [0, 100]},
+                'bar': {'color': "darkred"},
+                'steps': [
+                    {'range': [0, 30], 'color': "#00CC96"},
+                    {'range': [30, 70], 'color': "#FFA15A"},
+                    {'range': [70, 100], 'color': "#EF553B"}]
+            }
+        ))
+        fig_rom.update_layout(height=350, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor="rgba(0,0,0,0)", font={'color': "white"})
+        st.plotly_chart(fig_rom, use_container_width=True)
+
+    with col_score2:
+        st.write("### 📡 Anlık Makro Sinyaller")
+        slope_val = m_data['slope']
+        
+        # Getiri Eğrisi Durumu
+        delta_msg = "TERSİNE DÖNÜŞ (⚠️)" if slope_val < 0 else "NORMAL"
+        st.metric("Getiri Eğrisi (10Y-2Y)", f"{slope_val:.2f}%", delta=delta_msg, delta_color="inverse" if slope_val < 0 else "normal")
+        
+        st.divider()
+        
+        # Diğer Önemli Veriler
+        c1, c2 = st.columns(2)
+        c1.metric("Fed Faiz", f"%{m_data['fed_funds']}")
+        c2.metric("VIX Endeksi", f"{m_data['vix']}")
+        st.metric("İşsizlik Oranı", f"%{m_data['unemp']}")
+
+    st.subheader("📊 Stratejik Parametre Matrisi")
+    # Manuel sinyal tablosu (İleride bunlar tam otomatik olacak)
+    param_df = pd.DataFrame([
+        {"Parametre": "Politika Faizi", "Ağırlık": "%25", "Durum": "Sıkılaştırıcı", "Sinyal": "🔴"},
+        {"Parametre": "Getiri Eğrisi", "Ağırlık": "%20", "Durum": "Riskli", "Sinyal": "🔴"},
+        {"Parametre": "İşsizlik Momentumu", "Ağırlık": "%15", "Durum": "Yükseliş", "Sinyal": "🟡"},
+        {"Parametre": "VIX (FX Stres)", "Ağırlık": "%10", "Durum": "Stabil", "Sinyal": "🟢"}
+    ])
+    st.table(param_df)
     
-    st.subheader("📉 Getiri Egrisi (10Y - 2Y)")
-    @st.cache_data(ttl=21600)
-    def get_yield_curve():
-        try:
-            url_10y = f"https://api.stlouisfed.org/fred/series/observations?series_id=DGS10&api_key={FRED_API_KEY}&file_type=json&sort_order=desc&limit=100"
-            url_2y = f"https://api.stlouisfed.org/fred/series/observations?series_id=DGS2&api_key={FRED_API_KEY}&file_type=json&sort_order=desc&limit=100"
-            r10 = requests.get(url_10y).json()
-            r2 = requests.get(url_2y).json()
-            obs10 = {o['date']: o['value'] for o in r10['observations'] if o['value'] != '.'}
-            obs2 = {o['date']: o['value'] for o in r2['observations'] if o['value'] != '.'}
-            common_dates = sorted(list(set(obs10.keys()) & set(obs2.keys())), reverse=True)
-            spreads = [float(obs10[d]) - float(obs2[d]) for d in common_dates]
-            if not spreads: return None, 0
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=common_dates, y=spreads, mode='lines', name='Spread'))
-            fig.add_hline(y=0, line_dash="dash", line_color="red")
-            fig.update_layout(height=400, template="plotly_dark")
-            return fig, spreads[0]
-        except: return None, 0
-    
-    f_yield, s_spread = get_yield_curve()
-    if f_yield:
-        st.plotly_chart(f_yield, use_container_width=True)
-        if s_spread < 0: st.error(f"⚠️ Getiri egrisi tersine dondu: {s_spread:.2f}%")
-        else: st.success(f"✅ Getiri egrisi normal: {s_spread:.2f}%")
+    st.caption(f"🕒 Veri Döngüsü: 6 Saatlik | Son Tarama: {datetime.now().strftime('%H:%M')}")
 
 with tab2:
     st.header("📰 Ekonomi Haberleri")
