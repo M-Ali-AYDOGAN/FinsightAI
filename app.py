@@ -126,6 +126,21 @@ def calculate_fair_value(ticker, current_price, cagr):
     
     return round(fair_value, 2), round(upside, 2)
 
+# --- KATMAN 5: PORTFÖY OPTİMİZASYONU ---
+def calculate_position_size(upside, rom_score):
+    """
+    Kelly Kriteri ve Makro Risk (ROM) tabanlı pozisyon büyüklüğü
+    """
+    # Temel Kelly: (Win_Prob * Upside - Loss_Prob) / Upside
+    # Burada basitleştirilmiş bir model kullanıyoruz
+    base_size = (upside / 100) * 0.5 
+    
+    # Makro Koruma: Resesyon olasılığı arttıkça pozisyonu küçült
+    risk_multiplier = (100 - rom_score) / 100
+    
+    final_allocation = max(0, min(base_size * risk_multiplier * 100, 25)) # Tek hisse max %25
+    return round(final_allocation, 2)    
+
 tab1, tab2, tab3 = st.tabs(["🌍 Makro", "📰 Haberler", "🏭 Sektorler"])
 
 with tab1:
@@ -332,6 +347,41 @@ with tab3:
         cols[idx].metric(row['Hisse'], row['Hedef Fiyat (Fair Value)'], delta=row['Potansiyel'])
 
     st.caption("⚠️ Hedef fiyatlar Katman 1 (Makro) iskonto oranlarına göre dinamik olarak güncellenmektedir.")
+
+    st.divider()
+    st.subheader("🛡️ Katman 5: Portföy Optimizasyonu (Risk Yönetimi)")
+    
+    portfolio_data = []
+    total_stock_weight = 0
+    
+    for _, row in val_df.iterrows():
+        upside_val = float(row['Potansiyel'].replace('%', ''))
+        
+        # Pozisyon büyüklüğünü hesapla
+        pos_size = calculate_position_size(upside_val, m_data['rom'])
+        total_stock_weight += pos_size
+        
+        portfolio_data.append({
+            "Hisse": row['Hisse'],
+            "Önerilen Ağırlık": f"%{pos_size}",
+            "Risk Seviyesi": "DÜŞÜK" if pos_size > 15 else "ORTA"
+        })
+    
+    # Pasta Grafiği ile Dağılımı Göster
+    p_df = pd.DataFrame(portfolio_data)
+    # Nakit oranını hesapla
+    cash_weight = 100 - total_stock_weight
+    
+    fig_port = go.Figure(data=[go.Pie(
+        labels=list(p_df['Hisse']) + ['Nakit / Tahvil'],
+        values=list([float(x.replace('%','')) for x in p_df['Önerilen Ağırlık']]) + [cash_weight],
+        hole=.4,
+        marker_colors=['#00CC96', '#636EFA', '#EF553B', '#AB63FA', '#FFA15A', '#19D3F3']
+    )])
+    fig_port.update_layout(title="İdeal Portföy Dağılımı", template="plotly_dark")
+    st.plotly_chart(fig_port, use_container_width=True)
+
+    st.warning(f"💡 Stratejik Not: Mevcut makro riskler nedeniyle portföyün %{round(cash_weight, 2)} kadarı nakitte tutulmalıdır.")
 
 st.divider()
 st.caption("⚠️ Bilgilendirme amaclıdır, yatırım tavsiyesi degildir.")
