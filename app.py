@@ -38,13 +38,19 @@ except:
 def get_fred_val(series_id, api_key):
     try:
         url = f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={api_key}&file_type=json&sort_order=desc&limit=2"
-        data = requests.get(url).json()
+        response = requests.get(url)
+        data = response.json()
         if 'observations' in data and len(data['observations']) >= 2:
-            val = float(data['observations'][0]['value'])
-            prev = float(data['observations'][1]['value'])
+            val = data['observations'][0]['value']
+            prev = data['observations'][1]['value']
+            # Veri bazen '.' olarak gelebilir, bunu kontrol edelim
+            val = float(val) if val != '.' else None
+            prev = float(prev) if prev != '.' else None
             return val, prev
-    except: return None, None
-
+        return None, None
+    except Exception:
+        return None, None
+        
 def calculate_macro_scores(api_key):
     # Veri Toplama
     fed_funds, _ = get_fred_val('FEDFUNDS', api_key)
