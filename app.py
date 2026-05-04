@@ -237,6 +237,12 @@ def get_investment_intelligence(m_data, s_scores, geo_df, c_df):
 
     return pd.DataFrame(intelligence_reports)
 
+# --- TÜM VERİLERİ ÖNCEDEN HAZIRLA ---
+m_data = calculate_macro_scores(FRED_API_KEY)
+s_scores = calculate_sector_scores(m_data)
+geo_df = get_global_opportunity_map() # Hata veren değişken burada tanımlanmalı
+c_df = get_commodity_analysis(m_data) # Bu da burada olmalı
+
 tab1, tab2, tab3 = st.tabs(["🌍 Makro", "📰 Haberler", "🏭 Sektorler"])
 
 st.header("🧠 Yapay Zeka Yatırım Komitesi Kararları")
