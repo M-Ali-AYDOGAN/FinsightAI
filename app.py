@@ -110,6 +110,42 @@ def screen_stocks(sector_scores):
         })
     return pd.DataFrame(screened_results)
 
+# --- EMTİA ANALİZ MOTORU ---
+def get_commodity_analysis(m_data):
+    commodities = {
+        'Altın (Ons)': 'GC=F',
+        'Gümüş (Ons)': 'SI=F',
+        'Ham Petrol (WTI)': 'CL=F',
+        'Bakır': 'HG=F'
+    }
+    
+    comm_results = []
+    for name, ticker in commodities.items():
+        try:
+            # yf.download kullanarak veriyi çekiyoruz
+            data = yf.download(ticker, period="1mo", progress=False, auto_adjust=True)
+            if not data.empty:
+                # Kapanış sütununu güvenli çekme
+                close_series = data['Close'].iloc[:, 0] if isinstance(data['Close'], pd.DataFrame) else data['Close']
+                current_price = close_series.iloc[-1]
+                monthly_change = ((current_price / close_series.iloc[0]) - 1) * 100
+                
+                status = "NÖTR"
+                # Yatırım uzmanı mantığı: VIX yüksekse altına yönel
+                if name == 'Altın (Ons)' and m_data.get('vix', 20) > 25: 
+                    status = "🛡️ GÜÇLÜ AL (Riskten Kaçış)"
+                elif name == 'Ham Petrol (WTI)' and monthly_change > 5: 
+                    status = "⚠️ DİKKAT (Enflasyon Riski)"
+                
+                comm_results.append({
+                    "Emtia": name,
+                    "Fiyat": round(current_price, 2),
+                    "Aylık Değişim": f"%{round(monthly_change, 2)}",
+                    "Uzman Görüşü": status
+                })
+        except: continue
+    return pd.DataFrame(comm_results)
+
 # --- KATMAN 4: DEĞERLEME MOTORU ---
 def calculate_fair_value(ticker, current_price, cagr):
     """
@@ -433,5 +469,39 @@ with tab3:
             st.dataframe(top_performers, hide_index=True, use_container_width=True)
 
     st.info("💡 Uzman Notu: Türkiye gibi yüksek enflasyonlu piyasalarda 'Yıllık Getiri'nin reel getiri olup olmadığını Katman 1'deki enflasyon verileriyle kıyaslayın.")
+
+    # --- EMTİA PANELİ ---
+    st.divider()
+    st.header("💎 Küresel Emtia ve Değerli Metaller")
+    c_df = get_commodity_analysis(m_data)
+    if not c_df.empty:
+        st.dataframe(c_df, use_container_width=True, hide_index=True)
+
+    # --- TÜRKİYE GAYRİMENKUL PANELİ ---
+    st.divider()
+    st.header("🏠 Türkiye Gayrimenkul Strateji Merkezi")
+    
+    re_col1, re_col2 = st.columns([1, 1])
+    
+    with re_col1:
+        st.subheader("📈 Konut Fiyat Endeksi Eğilimi")
+        # Türkiye için simüle edilmiş reel getiri verisi
+        re_chart_data = pd.DataFrame({
+            'Yıl': ['2022', '2023', '2024', '2025', '2026'],
+            'Konut Fiyat Artışı': [160, 85, 55, 48, 42],
+            'Resmi Enflasyon': [64, 65, 45, 38, 32]
+        }).set_index('Yıl')
+        st.line_chart(re_chart_data)
+
+    with re_col2:
+        st.subheader("🧐 Yatırım Uzmanı Yorumu")
+        # Türkiye piyasasına özel mantık
+        if m_data.get('fed_funds', 5) > 4: # Basit bir global faiz korelasyonu
+            st.warning("Mevduat faizlerinin yüksek seyrettiği bu dönemde, gayrimenkul likiditesi düşük kalabilir. Nakit pozisyonu olanlar için fırsat dönemi.")
+        else:
+            st.success("Düşük faiz beklentisi gayrimenkul talebini artırabilir. Varlık koruma amaçlı alımlar değerlendirilebilir.")
+        
+        st.info("**Strateji:** Kira çarpanı 15-18 yıl bandındaki bölgeler öncelikli olmalı.")
+
 st.divider()
 st.caption("⚠️ Bilgilendirme amaclıdır, yatırım tavsiyesi degildir.")
