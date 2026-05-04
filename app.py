@@ -52,20 +52,24 @@ def get_fred_val(series_id, api_key):
         return None, None
         
 def calculate_macro_scores(api_key):
-    # Veri Toplama
+    # Veri Toplama (Eğer None gelirse 0 veya varsayılan atanır)
     fed_funds, _ = get_fred_val('FEDFUNDS', api_key)
     dgs10, _ = get_fred_val('DGS10', api_key)
     dgs2, _ = get_fred_val('DGS2', api_key)
     vix, _ = get_fred_val('VIXCLS', api_key)
     unemp_rate, prev_unemp = get_fred_val('UNRATE', api_key)
     
-    slope = (dgs10 - dgs2) if (dgs10 and dgs2) else 0
+    # Güvenli hesaplama (None kontrolleri)
+    fed_funds = fed_funds if fed_funds is not None else 0.0
+    vix = vix if vix is not None else 20.0 # VIX için ortalama bir değer
+    unemp_rate = unemp_rate if unemp_rate is not None else 4.0
     
-    # ROM (Resesyon Olasılığı Modeli) Mantığı
+    slope = (dgs10 - dgs2) if (dgs10 is not None and dgs2 is not None) else 0.0
+    
+    # ROM (Resesyon Olasılığı Modeli)
     rom_score = 0
-    if slope < 0: rom_score += 50 # Getiri eğrisi tersse
-    if unemp_rate and prev_unemp and (unemp_rate > prev_unemp): rom_score += 30 # İşsizlik artışı
-    if vix and vix > 30: rom_score += 20 # Yüksek volatilite
+    if slope < 0: rom_score += 50
+    if unemp_rate and prev_unemp and (unemp_rate > prev_unemp): rom_score += 30
     
     return {
         "slope": slope,
@@ -74,7 +78,6 @@ def calculate_macro_scores(api_key):
         "vix": vix,
         "unemp": unemp_rate
     }
-
 # --- KATMAN 3: ŞİRKET TARAMA VE TEMEL ANALİZ ---
 def screen_stocks(sector_scores):
     # Katman 3 Filtreleri: CAGR, Marjlar ve Borçluluk (Örnek Veri Seti)
