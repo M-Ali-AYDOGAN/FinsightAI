@@ -401,8 +401,8 @@ with tab3:
     }
     
         # Sektör Detay Tablosu
-    st.subheader("📋 Sektörel Duyarlılık ve Tahmin Matrisi")
-        detay_df = pd.DataFrame([
+st.subheader("📋 Sektörel Duyarlılık ve Tahmin Matrisi")
+    detay_df = pd.DataFrame([
             {"Sektör": k, "AI Skoru": v['Skor'], "6A Momentum": f"%{v['Momentum']}", 
              "Durum": "GÜÇLÜ AL" if v['Skor'] > 65 else ("ZAYIF" if v['Skor'] < 45 else "NÖTR")}
             for k, v in s_scores.items()
@@ -411,6 +411,7 @@ with tab3:
         st.dataframe(detay_df, use_container_width=True, hide_index=True)
   
     st.divider()
+
     # Katman 3 Arayüzü
     st.subheader("🔍 Katman 3: Şirket Taraması ve Temel Analiz")
     
