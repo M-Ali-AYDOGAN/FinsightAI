@@ -399,8 +399,6 @@ with tab3:
         'Kamu Hizmetleri': {'faiz': 3, 'enflasyon': 2, 'etf': 'XLU'},
         'Gayrimenkul': {'faiz': 3, 'enflasyon': 2, 'etf': 'XLRE'}
     }
-
-    @st.cache_data(ttl=21600)
     
         # Sektör Detay Tablosu
     st.subheader("📋 Sektörel Duyarlılık ve Tahmin Matrisi")
