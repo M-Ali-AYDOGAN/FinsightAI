@@ -403,7 +403,7 @@ with tab3:
     @st.cache_data(ttl=21600)
     
         # Sektör Detay Tablosu
-        st.subheader("📋 Sektörel Duyarlılık ve Tahmin Matrisi")
+    st.subheader("📋 Sektörel Duyarlılık ve Tahmin Matrisi")
         detay_df = pd.DataFrame([
             {"Sektör": k, "AI Skoru": v['Skor'], "6A Momentum": f"%{v['Momentum']}", 
              "Durum": "GÜÇLÜ AL" if v['Skor'] > 65 else ("ZAYIF" if v['Skor'] < 45 else "NÖTR")}
