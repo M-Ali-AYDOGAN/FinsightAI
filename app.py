@@ -78,6 +78,34 @@ def calculate_macro_scores(api_key):
         "vix": vix,
         "unemp": unemp_rate
     }
+
+def calculate_sector_scores(macro_data):
+        scores = {}
+        for isim, meta in sector_meta.items():
+            try:
+                # Fiyat Momentumu (6 Aylık)
+                df = yf.download(meta['etf'], period="6mo", progress=False, auto_adjust=True)
+                close_series = df['Close'].iloc[:, 0] if isinstance(df['Close'], pd.DataFrame) else df['Close']
+                momentum = ((close_series.iloc[-1] / close_series.iloc[0]) - 1) * 100
+                
+                # --- STRATEJİK PUANLAMA (Katman 2 Mantığı) ---
+                puan = 50 # Baz puan
+                puan += (momentum * 0.5) # Momentum ağırlığı %50
+                
+                # Faiz Duyarlılığı Ayarlaması
+                if macro_data['fed_funds'] > 3.5: # Faizler yüksekse
+                    if meta['faiz'] == 3: puan -= 15 # Faiz hassasiyeti yüksek olanı cezalandır
+                    if isim == 'Finansallar': puan += 10 # Bankalar için pozitif
+                
+                # Resesyon Risk Ayarlaması (ROM)
+                if macro_data['rom'] > 50:
+                    if isim in ['Teknoloji', 'Enerji']: puan -= 20 # Döngüsel sektörler
+                    if isim == 'Sağlık': puan += 15 # Savunmacı sektörler
+                
+                scores[isim] = {"Skor": round(puan, 2), "Momentum": round(momentum, 2)}
+            except: continue
+        return scores
+    
 # --- KATMAN 3: ŞİRKET TARAMA VE TEMEL ANALİZ ---
 def screen_stocks(sector_scores):
     # Katman 3 Filtreleri: CAGR, Marjlar ve Borçluluk (Örnek Veri Seti)
@@ -109,6 +137,37 @@ def screen_stocks(sector_scores):
             "Final Skoru": round(final_score, 2)
         })
     return pd.DataFrame(screened_results)
+
+# --- KÜRESEL PİYASALAR VE FIRSAT HARİTASI ---
+def get_global_opportunity_map():
+    # Küresel takip listesi (Endeksler)
+    global_assets = {
+        'Türkiye': 'XU100.IS',
+        'Almanya': '^GDAXI', 'Fransa': '^FCHI', 'İngiltere': '^FTSE',
+        'İtalya': 'FTSEMIB.MI', 'İspanya': '^IBEX', 'Hollanda': '^AEX',
+        'İsviçre': '^SSMI', 'Polonya': 'WIG20.WA',
+        'Japonya': '^N225', 'Çin': '000001.SS', 'Hindistan': '^NSEI',
+        'G. Kore': '^KS11', 'Vietnam': 'VNI.VN'
+    }
+    
+    results = []
+    for country, ticker in global_assets.items():
+        try:
+            # 1 yıllık veri çekerek momentum analizi yapıyoruz
+            hist = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
+            if not hist.empty:
+                # Kapanış fiyatı sütununu güvenli çekme
+                close_series = hist['Close'].iloc[:, 0] if isinstance(hist['Close'], pd.DataFrame) else hist['Close']
+                ytd_change = ((close_series.iloc[-1] / close_series.iloc[0]) - 1) * 100
+                
+                results.append({
+                    "Ülke": country,
+                    "Yıllık Getiri": round(ytd_change, 2),
+                    "Momentum": "🔥 Güçlü" if ytd_change > 15 else ("🧊 Zayıf" if ytd_change < 0 else "⚖️ Stabil")
+                })
+        except: continue
+    return pd.DataFrame(results)
+
 
 # --- EMTİA ANALİZ MOTORU ---
 def get_commodity_analysis(m_data):
@@ -146,6 +205,36 @@ def get_commodity_analysis(m_data):
         except: continue
     return pd.DataFrame(comm_results)
 
+def get_investment_intelligence(m_data, s_scores, geo_df, c_df):
+    intelligence_reports = []
+    
+    # --- STRATEJİK MANTIK 1: GÜVENLİ LİMAN KONTROLÜ ---
+    if m_data['vix'] > 25 or m_data['rom'] > 60:
+        intelligence_reports.append({
+            "Varlık Sınıfı": "Değerli Metaller & Nakit",
+            "Aksiyon": "AĞIRLIĞI ARTIR",
+            "Gerekçe": "Küresel volatilite (VIX) ve resesyon riski (ROM) eşik değerlerin üzerinde. Sermaye koruma moduna geçilmeli."
+        })
+
+    # --- STRATEJİK MANTIK 2: COĞRAFİ ROTASYON (TÜRKİYE & KÜRESEL) ---
+    top_country = geo_df.sort_values(by="Yıllık Getiri", ascending=False).iloc[0]['Ülke']
+    intelligence_reports.append({
+        "Varlık Sınıfı": f"Uluslararası Hisseler ({top_country})",
+        "Aksiyon": "İZLE / SEÇİCİ OL",
+        "Gerekçe": f"{top_country} piyasası güçlü momentum sergiliyor. Ancak yerel enflasyon ve kur riski Katman 1 verileriyle kıyaslanmalı."
+    })
+
+    # --- STRATEJİK MANTIK 3: TÜRKİYE GAYRİMENKUL ---
+    # Türkiye faiz simülasyonu üzerinden karar
+    if m_data['fed_funds'] > 4: # Global sıkılaşma örneği
+        intelligence_reports.append({
+            "Varlık Sınıfı": "Türkiye Gayrimenkul",
+            "Aksiyon": "BEKLE / PAZARLIK YAP",
+            "Gerekçe": "Yüksek faiz ortamı kredi erişimini kısıtlıyor. Fiyat artış hızı yavaşlayabilir, nakit alım fırsatları kollanmalı."
+        })
+
+    return pd.DataFrame(intelligence_reports)
+
 # --- KATMAN 4: DEĞERLEME MOTORU ---
 def calculate_fair_value(ticker, current_price, cagr):
     """
@@ -177,92 +266,6 @@ def calculate_position_size(upside, rom_score):
     final_allocation = max(0, min(base_size * risk_multiplier * 100, 25)) # Tek hisse max %25
     return round(final_allocation, 2)    
 
-# --- KÜRESEL PİYASALAR VE FIRSAT HARİTASI ---
-def get_global_opportunity_map():
-    # Küresel takip listesi (Endeksler)
-    global_assets = {
-        'Türkiye': 'XU100.IS',
-        'Almanya': '^GDAXI', 'Fransa': '^FCHI', 'İngiltere': '^FTSE',
-        'İtalya': 'FTSEMIB.MI', 'İspanya': '^IBEX', 'Hollanda': '^AEX',
-        'İsviçre': '^SSMI', 'Polonya': 'WIG20.WA',
-        'Japonya': '^N225', 'Çin': '000001.SS', 'Hindistan': '^NSEI',
-        'G. Kore': '^KS11', 'Vietnam': 'VNI.VN'
-    }
-    
-    results = []
-    for country, ticker in global_assets.items():
-        try:
-            # 1 yıllık veri çekerek momentum analizi yapıyoruz
-            hist = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
-            if not hist.empty:
-                # Kapanış fiyatı sütununu güvenli çekme
-                close_series = hist['Close'].iloc[:, 0] if isinstance(hist['Close'], pd.DataFrame) else hist['Close']
-                ytd_change = ((close_series.iloc[-1] / close_series.iloc[0]) - 1) * 100
-                
-                results.append({
-                    "Ülke": country,
-                    "Yıllık Getiri": round(ytd_change, 2),
-                    "Momentum": "🔥 Güçlü" if ytd_change > 15 else ("🧊 Zayıf" if ytd_change < 0 else "⚖️ Stabil")
-                })
-        except: continue
-    return pd.DataFrame(results)
-
-def get_investment_intelligence(m_data, s_scores, geo_df, c_df):
-    intelligence_reports = []
-    
-    # --- STRATEJİK MANTIK 1: GÜVENLİ LİMAN KONTROLÜ ---
-    if m_data['vix'] > 25 or m_data['rom'] > 60:
-        intelligence_reports.append({
-            "Varlık Sınıfı": "Değerli Metaller & Nakit",
-            "Aksiyon": "AĞIRLIĞI ARTIR",
-            "Gerekçe": "Küresel volatilite (VIX) ve resesyon riski (ROM) eşik değerlerin üzerinde. Sermaye koruma moduna geçilmeli."
-        })
-
-    # --- STRATEJİK MANTIK 2: COĞRAFİ ROTASYON (TÜRKİYE & KÜRESEL) ---
-    top_country = geo_df.sort_values(by="Yıllık Getiri", ascending=False).iloc[0]['Ülke']
-    intelligence_reports.append({
-        "Varlık Sınıfı": f"Uluslararası Hisseler ({top_country})",
-        "Aksiyon": "İZLE / SEÇİCİ OL",
-        "Gerekçe": f"{top_country} piyasası güçlü momentum sergiliyor. Ancak yerel enflasyon ve kur riski Katman 1 verileriyle kıyaslanmalı."
-    })
-
-    # --- STRATEJİK MANTIK 3: TÜRKİYE GAYRİMENKUL ---
-    # Türkiye faiz simülasyonu üzerinden karar
-    if m_data['fed_funds'] > 4: # Global sıkılaşma örneği
-        intelligence_reports.append({
-            "Varlık Sınıfı": "Türkiye Gayrimenkul",
-            "Aksiyon": "BEKLE / PAZARLIK YAP",
-            "Gerekçe": "Yüksek faiz ortamı kredi erişimini kısıtlıyor. Fiyat artış hızı yavaşlayabilir, nakit alım fırsatları kollanmalı."
-        })
-
-    return pd.DataFrame(intelligence_reports)
-
-def calculate_sector_scores(macro_data):
-        scores = {}
-        for isim, meta in sector_meta.items():
-            try:
-                # Fiyat Momentumu (6 Aylık)
-                df = yf.download(meta['etf'], period="6mo", progress=False, auto_adjust=True)
-                close_series = df['Close'].iloc[:, 0] if isinstance(df['Close'], pd.DataFrame) else df['Close']
-                momentum = ((close_series.iloc[-1] / close_series.iloc[0]) - 1) * 100
-                
-                # --- STRATEJİK PUANLAMA (Katman 2 Mantığı) ---
-                puan = 50 # Baz puan
-                puan += (momentum * 0.5) # Momentum ağırlığı %50
-                
-                # Faiz Duyarlılığı Ayarlaması
-                if macro_data['fed_funds'] > 3.5: # Faizler yüksekse
-                    if meta['faiz'] == 3: puan -= 15 # Faiz hassasiyeti yüksek olanı cezalandır
-                    if isim == 'Finansallar': puan += 10 # Bankalar için pozitif
-                
-                # Resesyon Risk Ayarlaması (ROM)
-                if macro_data['rom'] > 50:
-                    if isim in ['Teknoloji', 'Enerji']: puan -= 20 # Döngüsel sektörler
-                    if isim == 'Sağlık': puan += 15 # Savunmacı sektörler
-                
-                scores[isim] = {"Skor": round(puan, 2), "Momentum": round(momentum, 2)}
-            except: continue
-        return scores
  # Verileri Katman 1'den alıp işle
     s_scores = calculate_sector_scores(m_data) # m_data Katman 1'den geliyor
     
