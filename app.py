@@ -1273,10 +1273,6 @@ Tarih: {datetime.now().strftime('%d.%m.%Y %H:%M')}
         output.seek(0)
         return output.getvalue()
 '''
-
-with open('/mnt/agents/output/finsightai_app_fixed.py', 'a', encoding='utf-8') as f:
-    f.write(part3)
-
 print(f"Part 3 written: {len(part3)} chars")
 part4 = r'''
 # ========== 9. STREAMLIT UI / DASHBOARD ==========
