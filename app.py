@@ -687,10 +687,6 @@ def calculate_asset_rotation(makro: MakroVeri, emtialar: List[EmtiaAnalizi],
     return rotasyon
 '''
 
-# Write first part
-with open('/mnt/agents/output/finsightai_app_fixed.py', 'w', encoding='utf-8') as f:
-    f.write(app_code)
-
 print(f"Part 1 written: {len(app_code)} chars")
 part2 = r'''
 # ========== 6. OTOMATIK ŞIRKET TARAMA (65+ ŞIRKET) ==========
