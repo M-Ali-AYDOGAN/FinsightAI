@@ -1687,17 +1687,3 @@ if __name__ == "__main__":
 '''
 
 print(f"Part 4 written: {len(part4)} chars")
-
-# Check final file
-import os
-file_size = os.path.getsize('/mnt/agents/output/finsightai_app_fixed.py')
-print(f"\n{'='*60}")
-print(f"✅ TÜM PARÇALAR BİRLEŞTİRİLDİ!")
-print(f"{'='*60}")
-print(f"📁 Dosya: finsightai_app_fixed.py")
-print(f"📊 Toplam Boyut: {file_size:,} byte ({file_size/1024:.1f} KB)")
-
-# Count lines
-with open('/mnt/agents/output/finsightai_app_fixed.py', 'r', encoding='utf-8') as f:
-    lines = f.readlines()
-    print(f"📄 Toplam Satır: {len(lines)}")
