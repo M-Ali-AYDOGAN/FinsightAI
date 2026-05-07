@@ -1686,9 +1686,6 @@ if __name__ == "__main__":
     main()
 '''
 
-with open('/mnt/agents/output/finsightai_app_fixed.py', 'a', encoding='utf-8') as f:
-    f.write(part4)
-
 print(f"Part 4 written: {len(part4)} chars")
 
 # Check final file
