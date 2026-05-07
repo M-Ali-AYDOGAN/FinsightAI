@@ -1,6 +1,4 @@
-# PARÇA 1: Imports, Yapılandırma, Veri Yapıları, Yardımcı Fonksiyonlar, Haber Motoru
-
-part1 = r'''"""
+app_code = r'''"""
 FinsightAI - Ekonomik Danışman (v2.2 Final)
 Tüm Özellikler: Haber NLP, Makro, Emtia, Gayrimenkul, Jeopolitik, 65+ Şirket, Portföy
 """
@@ -16,6 +14,7 @@ import feedparser
 from typing import Dict, Tuple, Optional, List, Any
 from dataclasses import dataclass
 from enum import Enum
+import io
 
 # ========== YAPILANDIRMA ==========
 st.set_page_config(
@@ -307,16 +306,7 @@ def analyze_news_sentiment(haberler: List[Dict]) -> Tuple[float, float, float, L
     savunma_agirlik = min(savunma_skor * 5, 50)
     
     return round(ortalama_skor, 2), jeopolitik_risk, savunma_agirlik, analizli
-'''
 
-output_path = "/mnt/agents/output/finsightai_v22_final.py"
-with open(output_path, "w", encoding="utf-8") as f:
-    f.write(part1)
-
-print(f"✅ PARÇA 1 yazıldı: {len(part1)} karakter")
-# PARÇA 2: Makro Veri, Emtia, Gayrimenkul, Varlık Rotasyonu
-
-part2 = r'''
 # ========== 2. MAKRO VERI TOPLAMA ==========
 @st.cache_data(ttl=21600)
 def get_fred_val(series_id: str, api_key: str) -> Tuple[Optional[float], Optional[float]]:
@@ -697,62 +687,42 @@ def calculate_asset_rotation(makro: MakroVeri, emtialar: List[EmtiaAnalizi],
     return rotasyon
 '''
 
-output_path = "/mnt/agents/output/finsightai_v22_final.py"
-with open(output_path, "a", encoding="utf-8") as f:
-    f.write(part2)
+# Write first part
+with open('/mnt/agents/output/finsightai_app_fixed.py', 'w', encoding='utf-8') as f:
+    f.write(app_code)
 
-print(f"✅ PARÇA 2 yazıldı: {len(part2)} karakter")
-# PARÇA 3: Şirket Veritabanı (65+ şirket) + Analiz Motoru + Jeopolitik Etki
-
-part3 = r'''
+print(f"Part 1 written: {len(app_code)} chars")
+part2 = r'''
 # ========== 6. OTOMATIK ŞIRKET TARAMA (65+ ŞIRKET) ==========
 AUTO_COMPANY_DATABASE = {
     # === BİST (Türkiye) ===
-    # Savunma Sanayi
     'ASELS.IS': {'isim': 'Aselsan', 'sektor': 'Savunma', 'borsa': 'BIST', 'ulke': 'Türkiye'},
-    
-    # Bankacılık
     'GARAN.IS': {'isim': 'Garanti Bankası', 'sektor': 'Finansallar', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'AKBNK.IS': {'isim': 'Akbank', 'sektor': 'Finansallar', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'ISCTR.IS': {'isim': 'İş Bankası', 'sektor': 'Finansallar', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'YKBNK.IS': {'isim': 'Yapı Kredi', 'sektor': 'Finansallar', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'HALKB.IS': {'isim': 'Halkbank', 'sektor': 'Finansallar', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'VAKBN.IS': {'isim': 'Vakıfbank', 'sektor': 'Finansallar', 'borsa': 'BIST', 'ulke': 'Türkiye'},
-    
-    # Havacılık & Ulaşım
     'THYAO.IS': {'isim': 'Türk Hava Yolları', 'sektor': 'Ulaştırma', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'PGSUS.IS': {'isim': 'Pegasus', 'sektor': 'Ulaştırma', 'borsa': 'BIST', 'ulke': 'Türkiye'},
-    
-    # Enerji
     'TUPRS.IS': {'isim': 'Tüpraş', 'sektor': 'Enerji', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'PETKM.IS': {'isim': 'Petkim', 'sektor': 'Enerji', 'borsa': 'BIST', 'ulke': 'Türkiye'},
-    
-    # Hammadde & Metal
     'EREGL.IS': {'isim': 'Ereğli Demir Çelik', 'sektor': 'Hammaddeler', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'KRDMD.IS': {'isim': 'Kardemir', 'sektor': 'Hammaddeler', 'borsa': 'BIST', 'ulke': 'Türkiye'},
-    
-    # Perakende & Gıda
     'BIMAS.IS': {'isim': 'BİM', 'sektor': 'Perakende', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'SOKM.IS': {'isim': 'Şok Marketler', 'sektor': 'Perakende', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'MGROS.IS': {'isim': 'Migros', 'sektor': 'Perakende', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'ULKER.IS': {'isim': 'Ülker', 'sektor': 'Gıda', 'borsa': 'BIST', 'ulke': 'Türkiye'},
-    
-    # Teknoloji
     'TCELL.IS': {'isim': 'Turkcell', 'sektor': 'Teknoloji', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     'TTKOM.IS': {'isim': 'Türk Telekom', 'sektor': 'Teknoloji', 'borsa': 'BIST', 'ulke': 'Türkiye'},
-    
-    # İlaç & Sağlık
     'ECILC.IS': {'isim': 'Eczacıbaşı İlaç', 'sektor': 'Sağlık', 'borsa': 'BIST', 'ulke': 'Türkiye'},
     
-    # === ABD (NYSE/NASDAQ) ===
-    # Savunma
+    # === ABD ===
     'LMT': {'isim': 'Lockheed Martin', 'sektor': 'Savunma', 'borsa': 'NYSE', 'ulke': 'ABD'},
     'NOC': {'isim': 'Northrop Grumman', 'sektor': 'Savunma', 'borsa': 'NYSE', 'ulke': 'ABD'},
     'RTX': {'isim': 'Raytheon', 'sektor': 'Savunma', 'borsa': 'NYSE', 'ulke': 'ABD'},
     'GD': {'isim': 'General Dynamics', 'sektor': 'Savunma', 'borsa': 'NYSE', 'ulke': 'ABD'},
     'BA': {'isim': 'Boeing', 'sektor': 'Savunma', 'borsa': 'NYSE', 'ulke': 'ABD'},
-    
-    # Teknoloji
     'NVDA': {'isim': 'NVIDIA', 'sektor': 'Teknoloji', 'borsa': 'NASDAQ', 'ulke': 'ABD'},
     'AAPL': {'isim': 'Apple', 'sektor': 'Teknoloji', 'borsa': 'NASDAQ', 'ulke': 'ABD'},
     'MSFT': {'isim': 'Microsoft', 'sektor': 'Teknoloji', 'borsa': 'NASDAQ', 'ulke': 'ABD'},
@@ -760,62 +730,38 @@ AUTO_COMPANY_DATABASE = {
     'META': {'isim': 'Meta', 'sektor': 'Teknoloji', 'borsa': 'NASDAQ', 'ulke': 'ABD'},
     'AMZN': {'isim': 'Amazon', 'sektor': 'Teknoloji', 'borsa': 'NASDAQ', 'ulke': 'ABD'},
     'TSLA': {'isim': 'Tesla', 'sektor': 'Teknoloji', 'borsa': 'NASDAQ', 'ulke': 'ABD'},
-    
-    # Finans
     'JPM': {'isim': 'JPMorgan', 'sektor': 'Finansallar', 'borsa': 'NYSE', 'ulke': 'ABD'},
     'V': {'isim': 'Visa', 'sektor': 'Finansallar', 'borsa': 'NYSE', 'ulke': 'ABD'},
     'MA': {'isim': 'Mastercard', 'sektor': 'Finansallar', 'borsa': 'NYSE', 'ulke': 'ABD'},
     'BAC': {'isim': 'Bank of America', 'sektor': 'Finansallar', 'borsa': 'NYSE', 'ulke': 'ABD'},
-    
-    # Enerji
     'XOM': {'isim': 'Exxon Mobil', 'sektor': 'Enerji', 'borsa': 'NYSE', 'ulke': 'ABD'},
     'CVX': {'isim': 'Chevron', 'sektor': 'Enerji', 'borsa': 'NYSE', 'ulke': 'ABD'},
-    
-    # Sağlık
     'JNJ': {'isim': 'J&J', 'sektor': 'Sağlık', 'borsa': 'NYSE', 'ulke': 'ABD'},
     'PFE': {'isim': 'Pfizer', 'sektor': 'Sağlık', 'borsa': 'NYSE', 'ulke': 'ABD'},
     'UNH': {'isim': 'UnitedHealth', 'sektor': 'Sağlık', 'borsa': 'NYSE', 'ulke': 'ABD'},
     
     # === AVRUPA ===
-    # Almanya
     'SAP': {'isim': 'SAP SE', 'sektor': 'Teknoloji', 'borsa': 'XETRA', 'ulke': 'Almanya'},
     'SIE.DE': {'isim': 'Siemens', 'sektor': 'Teknoloji', 'borsa': 'XETRA', 'ulke': 'Almanya'},
     'ALV.DE': {'isim': 'Allianz', 'sektor': 'Finansallar', 'borsa': 'XETRA', 'ulke': 'Almanya'},
     'BMW.DE': {'isim': 'BMW', 'sektor': 'Ulaştırma', 'borsa': 'XETRA', 'ulke': 'Almanya'},
-    
-    # Hollanda
     'ASML': {'isim': 'ASML Holding', 'sektor': 'Teknoloji', 'borsa': 'XETRA', 'ulke': 'Hollanda'},
-    
-    # İsviçre
     'NESN.SW': {'isim': 'Nestlé', 'sektor': 'Sağlık', 'borsa': 'SIX', 'ulke': 'İsviçre'},
     'ROG.SW': {'isim': 'Roche', 'sektor': 'Sağlık', 'borsa': 'SIX', 'ulke': 'İsviçre'},
-    
-    # Fransa
     'AIR.PA': {'isim': 'Airbus', 'sektor': 'Savunma', 'borsa': 'EPA', 'ulke': 'Fransa'},
     'OR.PA': {'isim': 'L\'Oréal', 'sektor': 'Sağlık', 'borsa': 'EPA', 'ulke': 'Fransa'},
-    
-    # İngiltere
     'BA.L': {'isim': 'BAE Systems', 'sektor': 'Savunma', 'borsa': 'LSE', 'ulke': 'İngiltere'},
     'RDSA.L': {'isim': 'Shell', 'sektor': 'Enerji', 'borsa': 'LSE', 'ulke': 'İngiltere'},
     
     # === ASYA ===
-    # Japonya
     '7203.T': {'isim': 'Toyota', 'sektor': 'Ulaştırma', 'borsa': 'TSE', 'ulke': 'Japonya'},
     '6758.T': {'isim': 'Sony', 'sektor': 'Teknoloji', 'borsa': 'TSE', 'ulke': 'Japonya'},
-    
-    # Güney Kore
     '005930.KS': {'isim': 'Samsung', 'sektor': 'Teknoloji', 'borsa': 'KRX', 'ulke': 'G. Kore'},
     '000660.KS': {'isim': 'SK Hynix', 'sektor': 'Teknoloji', 'borsa': 'KRX', 'ulke': 'G. Kore'},
-    
-    # Çin
     'BABA': {'isim': 'Alibaba', 'sektor': 'Teknoloji', 'borsa': 'NYSE', 'ulke': 'Çin'},
     'JD': {'isim': 'JD.com', 'sektor': 'Teknoloji', 'borsa': 'NASDAQ', 'ulke': 'Çin'},
-    
-    # Hindistan
     'RELIANCE.NS': {'isim': 'Reliance', 'sektor': 'Enerji', 'borsa': 'NSE', 'ulke': 'Hindistan'},
     'TCS.NS': {'isim': 'Tata Consultancy', 'sektor': 'Teknoloji', 'borsa': 'NSE', 'ulke': 'Hindistan'},
-    
-    # Tayvan
     'TSM': {'isim': 'TSMC', 'sektor': 'Teknoloji', 'borsa': 'NYSE', 'ulke': 'Tayvan'},
 }
 
@@ -1015,14 +961,11 @@ def screen_all_companies(makro: MakroVeri, max_companies: int = 100) -> pd.DataF
     return pd.DataFrame(sonuclar)
 '''
 
-output_path = "/mnt/agents/output/finsightai_v22_final.py"
-with open(output_path, "a", encoding="utf-8") as f:
-    f.write(part3)
+with open('/mnt/agents/output/finsightai_app_fixed.py', 'a', encoding='utf-8') as f:
+    f.write(part2)
 
-print(f"✅ PARÇA 3 yazıldı: {len(part3)} karakter")
-# PARÇA 4: UI Dashboard, Portföy Optimizasyonu, Stop-Loss, Raporlama, Ana Koordinatör
-
-part4 = r'''
+print(f"Part 2 written: {len(part2)} chars")
+part3 = r'''
 # ========== 7. PORTFÖY OPTİMİZASYONU & RİSK YÖNETİMİ ==========
 class PortfoyOptimizasyonu:
     def __init__(self, sermaye: float = 1_000_000, risk_toleransi: str = "orta"):
@@ -1282,10 +1225,7 @@ Tarih: {datetime.now().strftime('%d.%m.%Y %H:%M')}
     
     def export_to_excel(self, makro: MakroVeri, emtialar: List[EmtiaAnalizi],
                         gayrimenkul: List[GayrimenkulAnalizi], rotasyon: List[VarlikRotasyonu],
-                        sirketler_df: pd.DataFrame, portfoy_df: pd.DataFrame,
-                        dosya_adi: str = "finsight_rapor.xlsx") -> bytes:
-        import io
-        
+                        sirketler_df: pd.DataFrame, portfoy_df: pd.DataFrame) -> bytes:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             # Makro veri
@@ -1339,7 +1279,13 @@ Tarih: {datetime.now().strftime('%d.%m.%Y %H:%M')}
         
         output.seek(0)
         return output.getvalue()
+'''
 
+with open('/mnt/agents/output/finsightai_app_fixed.py', 'a', encoding='utf-8') as f:
+    f.write(part3)
+
+print(f"Part 3 written: {len(part3)} chars")
+part4 = r'''
 # ========== 9. STREAMLIT UI / DASHBOARD ==========
 def render_makro_kart(makro: MakroVeri):
     col1, col2, col3, col4 = st.columns(4)
@@ -1751,18 +1697,21 @@ if __name__ == "__main__":
     main()
 '''
 
-output_path = "/mnt/agents/output/finsightai_v22_final.py"
-with open(output_path, "a", encoding="utf-8") as f:
+with open('/mnt/agents/output/finsightai_app_fixed.py', 'a', encoding='utf-8') as f:
     f.write(part4)
 
-print(f"✅ PARÇA 4 yazıldı: {len(part4)} karakter")
-print(f"\n{'='*60}")
-print(f"🎉 TÜM PARÇALAR TAMAMLANDI!")
-print(f"{'='*60}")
+print(f"Part 4 written: {len(part4)} chars")
 
-# Dosya boyutunu kontrol et
+# Check final file
 import os
-file_size = os.path.getsize(output_path)
-print(f"\n📁 Dosya: {output_path}")
+file_size = os.path.getsize('/mnt/agents/output/finsightai_app_fixed.py')
+print(f"\n{'='*60}")
+print(f"✅ TÜM PARÇALAR BİRLEŞTİRİLDİ!")
+print(f"{'='*60}")
+print(f"📁 Dosya: finsightai_app_fixed.py")
 print(f"📊 Toplam Boyut: {file_size:,} byte ({file_size/1024:.1f} KB)")
-print(f"\n✅ Dosya başarıyla oluşturuldu!")
+
+# Count lines
+with open('/mnt/agents/output/finsightai_app_fixed.py', 'r', encoding='utf-8') as f:
+    lines = f.readlines()
+    print(f"📄 Toplam Satır: {len(lines)}")
