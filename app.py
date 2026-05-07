@@ -957,9 +957,6 @@ def screen_all_companies(makro: MakroVeri, max_companies: int = 100) -> pd.DataF
     return pd.DataFrame(sonuclar)
 '''
 
-with open('/mnt/agents/output/finsightai_app_fixed.py', 'a', encoding='utf-8') as f:
-    f.write(part2)
-
 print(f"Part 2 written: {len(part2)} chars")
 part3 = r'''
 # ========== 7. PORTFÖY OPTİMİZASYONU & RİSK YÖNETİMİ ==========
